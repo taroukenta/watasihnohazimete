@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RPG - Full Integration Fixed</title>
+    <title>RPG - Auto Use Fixed</title>
     <style>
         :root { --main-color: #00ffcc; --bg-dark: #121212; --panel-bg: #1e1e1e; }
         body { background: var(--bg-dark); color: #eee; font-family: sans-serif; margin: 0; padding: 0; touch-action: manipulation; overflow: hidden; width: 100vw; height: 100vh; }
@@ -77,7 +77,8 @@
             </div>
 
             <div class="section-title">⚙️ 自動アイテム使用詳細設定</div>
-            <div class="stat-box" id="auto-settings-list"></div>
+            <div class="stat-box" id="auto-settings-list">
+                </div>
             
             <div class="section-title">🛡️ 装備中の武具</div>
             <div class="stat-box" id="current-equip-list" style="font-size: 10px;"></div>
@@ -152,7 +153,6 @@
 </div>
 
 <script>
-// --- ゲームデータ定義 ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = 600; canvas.height = 300;
@@ -196,16 +196,24 @@ const usableItems = {
 const parts = ['weapon','head','body','hand','foot','acc'];
 const shopData = {};
 const equipNames = {
-    weapon: ["木の棒", "鉄の短剣", "鋼鉄の剣", "銀のレイピア", "村正", "エクスカリバー"],
-    head: ["布の帽子", "革のフード", "鉄の兜", "鋼鉄ヘルム", "騎士の面", "勇者の兜"],
-    body: ["布の服", "冒険者の服", "革の鎧", "鎖帷子", "鉄の胸当て", "光の鎧"],
-    hand: ["布の手袋", "革の小手", "鉄の篭手", "ガントレット", "守護の腕輪", "覇王の篭手"],
-    foot: ["布の靴", "革のブーツ", "鉄の靴", "俊足のブーツ", "騎士の具足", "超越者の靴"],
-    acc: ["銅の指輪", "魔力のお守り", "力の首飾り", "生命の宝玉", "賢者の石", "真実の鏡"]
+    weapon: ["木の棒", "鉄の短剣", "鋼鉄の剣", "銀のレイピア", "村正", "エクスカリバー", "魔剣グラム", "龍殺し", "ゲイボルグ", "天叢雲剣", "神殺し", "終焉の鎌", "虚空の剣", "星砕き", "覇王の大剣", "光子剣", "カオスブレイド", "次元斬", "零式の太刀", "冥府の鍵", "雷神の槌", "灼熱の槍", "氷結の杖", "断罪の弓", "深淵の鞭", "黄金の斧", "叡智の書", "龍紋の爪", "魔王の眼", "概念の極致"],
+    head: ["布の帽子", "革のフード", "鉄の兜", "鋼鉄ヘルム", "騎士の面", "勇者の兜", "暗殺者の布", "魔導士の冠", "竜神の兜", "ミスリルヘルム", "神光のサークレット", "虚無の瞳", "天界の光輪", "髑髏の仮面", "魔王の角", "守護者の石", "知恵の兜", "英霊の頭飾り", "夜のベール", "月の髪飾り", "日の鳥冠", "大賢者の帽子", "狂戦士の兜", "戦神のマスク", "黒龍の額当て", "幻影の眼鏡", "真理の耳飾り", "混沌の覆面", "至高の冠", "全能の光"],
+    body: ["布の服", "冒険者の服", "革の鎧", "鎖帷子", "鉄の胸当て", "光の鎧", "闇の法衣", "竜鱗の鎧", "精霊のローブ", "不壊の重鎧", "神話のドレス", "因果の衣", "星界の外套", "黒金の装甲", "不死の胸当て", "天空の羽織", "血塗られた鎧", "魔封じの衣", "巨人の皮", "大地の装束", "深海のマント", "業火の鎧", "金剛不壊", "超越者の衣", "万物の器", "龍の胴衣", "暗黒の鎧", "光神の服", "運命の糸", "虚空の装甲"],
+    hand: ["布の手袋", "革の小手", "鉄の篭手", "ガントレット", "守護の腕輪", "覇王の篭手", "神速の手甲", "魔封じの手袋", "巨人の腕輪", "オリハルコンの腕輪", "神判の篭手", "全知の手袋", "金剛の手首", "龍の爪甲", "星のリストバンド", "カオスハンド", "アトラスの力", "技巧のグローブ", "影の腕抜き", "光のアームガード", "魔導の手甲", "雷鳴の小手", "炎熱の腕輪", "氷雪の手袋", "鋼鉄の拳", "叡智の指先", "運命の手相", "神の鉄拳", "深淵の抱擁", "理の腕"],
+    foot: ["布の靴", "革のブーツ", "鉄の靴", "俊足のブーツ", "騎士の具足", "超越者の靴", "隠密の足袋", "魔力走行の靴", "飛翔の具足", "黄金のグリーブ", "聖域のブーツ", "次元の歩み", "星のサンダル", "雷光の靴", "重力の具足", "神風の足袋", "魔王の歩幅", "英雄の靴", "黒影のブーツ", "光のステップ", "浮遊の靴", "大地の足音", "冥界の歩み", "龍の足甲", "王の行進", "因果の靴", "概念の移動", "真空の靴", "最速のレガース", "終焉の足跡"],
+    acc: ["銅の指輪", "魔力のお守り", "力の首飾り", "生命の宝玉", "賢者の石", "真実の鏡", "精霊の涙", "竜の心臓", "堕天使の羽", "混沌の核", "神の契約書", "宇宙の欠片", "時の砂時計", "希望の灯火", "絶望の刻印", "幸運のコイン", "災厄の種", "輪廻の環", "不死鳥の尾", "魔導の神髄", "英雄の証", "王の証", "神の血滴", "星の鼓動", "次元の裂け目", "虚無の結晶", "光の雫", "闇の塊", "世界の中心", "唯一の真理"]
 };
-parts.forEach(p => { shopData[p] = Array.from({length:equipNames[p].length}, (_,i)=>({ id: p+"_"+i, name: equipNames[p][i], atk: p==='weapon'||p==='acc'?(i+1)*35:0, def: p!=='weapon'?(i+1)*22:0, cost: Math.pow(i+1, 4.3)*160 })); });
 
-// --- ゲーム状態 ---
+parts.forEach(p => { 
+    shopData[p] = Array.from({length:30}, (_,i)=>({ 
+        id: p+"_"+i, 
+        name: equipNames[p][i], 
+        atk: (p==='weapon'||p==='acc') ? Math.floor(Math.pow(i+1, 2.5) * 25) : 0, 
+        def: (p!=='weapon') ? Math.floor(Math.pow(i+1, 2.5) * 15) : 0, 
+        cost: Math.floor(Math.pow(i+1, 4.8) * 200)
+    })); 
+});
+
 let state = {
     p: { gold:1000, lv:1, exp:0, hp:100, maxHp:100, atk:10, def:5, spd:1.1, x:150, y:200, targetX:150, lastAtk:0 },
     costs: { atk:10, def:15, hp:15, spd:25 },
@@ -218,18 +226,27 @@ let state = {
     currentArea: -1, enemies: [], popups: [], lastTick: Date.now(), lastSave: Date.now()
 };
 
-Object.keys(usableItems).forEach(k => { state.autoUse[k] = { enabled: false, pct: usableItems[k].defaultPct }; });
+// AutoUseの初期化
+Object.keys(usableItems).forEach(k => { 
+    state.autoUse[k] = { enabled: false, pct: usableItems[k].defaultPct }; 
+});
 
-// --- コア機能 ---
-function saveGame() { localStorage.setItem('rpg_full_save_final', JSON.stringify(state)); }
+function saveGame() { localStorage.setItem('rpg_fixed_v3', JSON.stringify(state)); }
 function loadGame() {
-    const saved = localStorage.getItem('rpg_full_save_final');
+    const saved = localStorage.getItem('rpg_fixed_v3');
     if (saved) { 
-        state = {...state, ...JSON.parse(saved)};
-        updateUI(); renderAutoSettings();
+        const parsed = JSON.parse(saved);
+        state = {...state, ...parsed};
+        // 保存データにautoUseがない場合の補填
+        Object.keys(usableItems).forEach(k => {
+            if(!state.autoUse[k]) state.autoUse[k] = { enabled: false, pct: usableItems[k].defaultPct };
+        });
     }
+    updateUI();
+    renderAutoSettings();
+    renderHomeLists();
 }
-function resetGame() { if(confirm("データを消去しますか？")) { localStorage.removeItem('rpg_full_save_final'); location.reload(); } }
+function resetGame() { if(confirm("データを消去しますか？")) { localStorage.removeItem('rpg_fixed_v3'); location.reload(); } }
 
 function addLog(msg) {
     const container = document.getElementById('log-container');
@@ -250,39 +267,28 @@ function getGPS() { return facilities.reduce((s,f)=>s+(state.builds[f.id]*f.inc)
 function updateUI() {
     document.getElementById('gold-global').innerText = Math.floor(state.p.gold).toLocaleString();
     document.getElementById('gps-val').innerText = getGPS().toLocaleString();
-    
-    const eqAtk = getEquipBonusAtk();
-    const petAtk = getPetBonusAtk();
-    const eqDef = getEquipBonusDef();
-    const petDef = getPetBonusDef();
-
     document.getElementById('p-atk-base').innerText = state.p.atk;
-    document.getElementById('p-atk-eq').innerText = eqAtk;
-    document.getElementById('p-atk-pet').innerText = petAtk;
-    document.getElementById('total-atk-val').innerText = getAtk();
-    
+    document.getElementById('p-atk-eq').innerText = getEquipBonusAtk().toLocaleString();
+    document.getElementById('p-atk-pet').innerText = getPetBonusAtk().toLocaleString();
+    document.getElementById('total-atk-val').innerText = getAtk().toLocaleString();
     document.getElementById('p-def-base').innerText = state.p.def;
-    document.getElementById('p-def-eq').innerText = eqDef;
-    document.getElementById('p-def-pet').innerText = petDef;
-    document.getElementById('total-def-val').innerText = getDef();
-
+    document.getElementById('p-def-eq').innerText = getEquipBonusDef().toLocaleString();
+    document.getElementById('p-def-pet').innerText = getPetBonusDef().toLocaleString();
+    document.getElementById('total-def-val').innerText = getDef().toLocaleString();
     document.getElementById('p-lv').innerText = state.p.lv;
-    document.getElementById('p-exp').innerText = Math.floor(state.p.exp);
-    document.getElementById('p-next-exp').innerText = state.p.lv * 100;
-    document.getElementById('p-hp-cur').innerText = Math.floor(state.p.hp);
-    document.getElementById('p-mhp').innerText = state.p.maxHp;
+    document.getElementById('p-exp').innerText = Math.floor(state.p.exp).toLocaleString();
+    document.getElementById('p-next-exp').innerText = (state.p.lv * 100).toLocaleString();
+    document.getElementById('p-hp-cur').innerText = Math.floor(state.p.hp).toLocaleString();
+    document.getElementById('p-mhp').innerText = state.p.maxHp.toLocaleString();
     document.getElementById('p-spd').innerText = state.p.spd.toFixed(1);
-    
-    document.getElementById('atk-cost').innerText = state.costs.atk;
-    document.getElementById('def-cost').innerText = state.costs.def;
-    document.getElementById('spd-cost').innerText = state.costs.spd;
-    document.getElementById('hp-cost').innerText = state.costs.hp;
-
-    document.getElementById('item-header-bar').innerHTML = Object.entries(usableItems).map(([k, v]) => `<span>${v.emoji}${state.items[k]}</span>`).join('') + `<span>⚔️${getAtk()}</span>`;
+    document.getElementById('atk-cost').innerText = state.costs.atk.toLocaleString();
+    document.getElementById('def-cost').innerText = state.costs.def.toLocaleString();
+    document.getElementById('spd-cost').innerText = state.costs.spd.toLocaleString();
+    document.getElementById('hp-cost').innerText = state.costs.hp.toLocaleString();
+    document.getElementById('item-header-bar').innerHTML = Object.entries(usableItems).map(([k, v]) => `<span>${v.emoji}${state.items[k]}</span>`).join('') + `<span>⚔️${getAtk().toLocaleString()}</span>`;
     document.getElementById('current-equip-list').innerHTML = parts.map(p => `<div>${p.toUpperCase()}: ${state.equips[p]?.name || '-'}</div>`).join('');
 }
 
-// --- リストレンダリング ---
 function upgrade(t) {
     if(state.p.gold >= state.costs[t]) {
         state.p.gold -= state.costs[t];
@@ -293,44 +299,30 @@ function upgrade(t) {
 }
 
 function renderHomeLists() {
-    // 施設リストの表示（個別収入と合計収入を追加）
-    const totalGps = getGPS();
-    document.getElementById('facility-total-gps').innerText = `全施設の合計収入: ${totalGps.toLocaleString()} Gold / sec`;
-    
+    document.getElementById('facility-total-gps').innerText = `全施設の合計収入: ${getGPS().toLocaleString()} Gold / sec`;
     document.getElementById('facility-list').innerHTML = facilities.map(f=>{
-        const lv = state.builds[f.id];
-        const cost = Math.floor(f.baseCost * Math.pow(1.6, lv));
-        const currentInc = lv * f.inc;
-        return `<div class="stat-row">
-            <div><span>${f.name} Lv.${lv}</span><br><span style="font-size:9px;color:#aaa;">現在の収入: +${currentInc.toLocaleString()} G/s</span></div>
-            <button onclick="buyFacility('${f.id}')">${cost.toLocaleString()}G</button>
-        </div>`;
+        const lv = state.builds[f.id], cost = Math.floor(f.baseCost * Math.pow(1.6, lv));
+        return `<div class="stat-row"><div><span>${f.name} Lv.${lv}</span><br><span style="font-size:9px;color:#aaa;">+${(lv*f.inc).toLocaleString()} G/s</span></div><button onclick="buyFacility('${f.id}')">${cost.toLocaleString()}G</button></div>`;
     }).join('');
-
     document.getElementById('pet-list').innerHTML = pets.map(p=>{
-        const lv = state.petLevels[p.id];
-        const cost = Math.floor(p.baseCost * Math.pow(2.2, lv));
-        return `<div class="stat-row">
-            <div><span>${p.name} Lv.${lv}</span><br><span style="font-size:9px;color:#aaa;">ATK:+${p.atk} DEF:+${p.def}</span></div>
-            <button onclick="buyPet('${p.id}')">${cost.toLocaleString()}G</button>
-        </div>`;
+        const lv = state.petLevels[p.id], cost = Math.floor(p.baseCost * Math.pow(2.2, lv));
+        return `<div class="stat-row"><div><span>${p.name} Lv.${lv}</span><br><span style="font-size:9px;color:#aaa;">ATK:+${p.atk} DEF:+${p.def}</span></div><button onclick="buyPet('${p.id}')">${cost.toLocaleString()}G</button></div>`;
     }).join('');
 }
 
 function buyFacility(id) {
-    const f = facilities.find(x=>x.id===id);
-    const cost = Math.floor(f.baseCost * Math.pow(1.6, state.builds[id]));
+    const f = facilities.find(x=>x.id===id), cost = Math.floor(f.baseCost * Math.pow(1.6, state.builds[id]));
     if(state.p.gold >= cost) { state.p.gold -= cost; state.builds[id]++; renderHomeLists(); updateUI(); }
 }
-
 function buyPet(id) {
-    const p = pets.find(x=>x.id===id);
-    const cost = Math.floor(p.baseCost * Math.pow(2.2, state.petLevels[id]));
+    const p = pets.find(x=>x.id===id), cost = Math.floor(p.baseCost * Math.pow(2.2, state.petLevels[id]));
     if(state.p.gold >= cost) { state.p.gold -= cost; state.petLevels[id]++; renderHomeLists(); updateUI(); }
 }
 
 function renderAutoSettings() {
-    document.getElementById('auto-settings-list').innerHTML = Object.entries(usableItems).map(([k, item]) => `
+    const target = document.getElementById('auto-settings-list');
+    if(!target) return;
+    target.innerHTML = Object.entries(usableItems).map(([k, item]) => `
         <div class="stat-row">
             <div>${item.emoji} ${item.name}</div>
             <div class="slider-box">
@@ -341,81 +333,34 @@ function renderAutoSettings() {
         </div>
     `).join('');
 }
-function updateAutoPct(k, val) { state.autoUse[k].pct = val; document.getElementById(`pct-val-${k}`).innerText = val+"%"; }
+function updateAutoPct(k, val) { state.autoUse[k].pct = parseInt(val); document.getElementById(`pct-val-${k}`).innerText = val+"%"; }
 function toggleAutoCustom(k) { state.autoUse[k].enabled = !state.autoUse[k].enabled; renderAutoSettings(); }
 
-// --- 倉庫 & 売却 ---
 function renderWarehouse() {
     const list = document.getElementById('warehouse-content');
     if(state.currentWarehouseTab === 'item') {
-        list.innerHTML = Object.entries(usableItems).map(([key, item]) => `
-            <div class="stat-row" style="border-bottom: 1px solid #333; padding-bottom:5px;">
-                <div><strong>${item.emoji} ${item.name}</strong> (${state.items[key]})<br><span class="item-desc">${item.desc}</span></div>
-                <div class="sell-action">
-                    <input type="number" id="sell-qty-${key}" value="1" min="1" max="${state.items[key]}">
-                    <button class="sell-btn" onclick="sellItem('${key}')">売却</button>
-                    <button onclick="useItem('${key}')">使用</button>
-                </div>
-            </div>
-        `).join('');
+        list.innerHTML = Object.entries(usableItems).map(([key, item]) => `<div class="stat-row"><div><strong>${item.emoji} ${item.name}</strong> (${state.items[key]})</div><div class="sell-action"><button class="sell-btn" onclick="sellItem('${key}')">売却</button><button onclick="useItem('${key}')">使用</button></div></div>`).join('');
     } else {
         const ownedList = state.inventory[state.currentWarehouseTab];
-        const summary = {};
-        ownedList.forEach(item => {
-            if(!summary[item.id]) summary[item.id] = { data: item, count: 0 };
-            summary[item.id].count++;
-        });
-
-        list.innerHTML = Object.values(summary).map(entry => {
-            const item = entry.data;
-            const isEquipped = state.equips[state.currentWarehouseTab]?.id === item.id;
-            return `
-                <div class="stat-row" style="border-bottom: 1px solid #333; padding-bottom:5px;">
-                    <div><strong>${item.name}</strong> ×${entry.count}<br><span class="item-desc">ATK:+${item.atk} DEF:+${item.def}</span></div>
-                    <div class="sell-action">
-                        <input type="number" id="sell-qty-${item.id}" value="1" min="1" max="${entry.count}">
-                        <button class="sell-btn" onclick="sellEquip('${state.currentWarehouseTab}','${item.id}')">売却</button>
-                        ${isEquipped ? '<span>[装備中]</span>' : `<button onclick="equipItem('${state.currentWarehouseTab}','${item.id}')">装備</button>`}
-                    </div>
-                </div>
-            `;
-        }).join('') || "なし";
+        list.innerHTML = ownedList.map((item, idx) => `<div class="stat-row"><div><strong>${item.name}</strong><br><span class="item-desc">ATK:+${item.atk.toLocaleString()} DEF:+${item.def.toLocaleString()}</span></div><div class="sell-action"><button class="sell-btn" onclick="sellEquip('${state.currentWarehouseTab}',${idx})">売</button>${state.equips[state.currentWarehouseTab]===item ? '<span>[装]</span>' : `<button onclick="equipItem('${state.currentWarehouseTab}',${idx})">装</button>`}</div></div>`).join('') || "なし";
     }
 }
-function sellItem(key) {
-    const qtyInput = document.getElementById(`sell-qty-${key}`);
-    const qty = parseInt(qtyInput.value);
-    if(qty > 0 && state.items[key] >= qty) {
-        state.items[key] -= qty;
-        state.p.gold += (usableItems[key].cost * 0.5) * qty;
-        renderWarehouse(); updateUI();
-    }
-}
-function sellEquip(part, id) {
-    const qtyInput = document.getElementById(`sell-qty-${id}`);
-    const qty = parseInt(qtyInput.value);
-    const owned = state.inventory[part];
-    let sold = 0;
-    for(let i = owned.length-1; i>=0 && sold < qty; i--) {
-        if(owned[i].id === id) {
-            const item = owned.splice(i, 1)[0];
-            state.p.gold += Math.floor(item.cost * 0.4);
-            if(state.equips[part]?.id === id) state.equips[part] = null;
-            sold++;
-        }
-    }
-    renderWarehouse(); updateUI();
-}
+function sellItem(key) { if(state.items[key]>0) { state.items[key]--; state.p.gold += usableItems[key].cost*0.5; renderWarehouse(); updateUI(); } }
+function sellEquip(part, idx) { const item = state.inventory[part].splice(idx,1)[0]; state.p.gold += item.cost*0.4; if(state.equips[part]===item) state.equips[part]=null; renderWarehouse(); updateUI(); }
 function useItem(t) { if(state.items[t]>0) { state.items[t]--; state.p.hp = Math.min(state.p.maxHp, state.p.hp+usableItems[t].heal(state.p)); renderWarehouse(); updateUI(); } }
-function equipItem(p, id) { state.equips[p] = state.inventory[p].find(i=>i.id===id); renderWarehouse(); updateUI(); }
+function equipItem(p, idx) { state.equips[p] = state.inventory[p][idx]; renderWarehouse(); updateUI(); }
 
-// --- ショップ系 ---
 function renderShop() {
     const list = document.getElementById('shop-content-list');
     if(state.currentShopTab === 'item') {
-        list.innerHTML = Object.entries(usableItems).map(([key, item]) => `<button class="buy-btn" onclick="buyItem('${key}', ${item.cost})"><strong>${item.emoji} ${item.name}</strong><br><span class="item-desc">${item.desc}</span><span class="price">${item.cost}G</span></button>`).join('');
+        list.innerHTML = Object.entries(usableItems).map(([key, item]) => `<button class="buy-btn" onclick="buyItem('${key}', ${item.cost})"><strong>${item.emoji} ${item.name}</strong><span class="price">${item.cost}G</span></button>`).join('');
     } else {
-        list.innerHTML = shopData[state.currentShopTab].map(item => `<button class="buy-btn" onclick="buyEquip('${state.currentShopTab}','${item.id}')"><span>${item.name} (+${item.atk||item.def})</span> <span class="price">${Math.floor(item.cost)}G</span></button>`).join('');
+        list.innerHTML = shopData[state.currentShopTab].map(item => `
+            <button class="buy-btn" onclick="buyEquip('${state.currentShopTab}','${item.id}')">
+                <span>${item.name}</span>
+                <span class="item-desc" style="color:#00ffcc;">上昇値: ${item.atk>0 ? 'ATK +'+item.atk.toLocaleString() : 'DEF +'+item.def.toLocaleString()}</span>
+                <span class="price">${item.cost.toLocaleString()}G</span>
+            </button>`).join('');
     }
 }
 function buyItem(t,c) { if(state.p.gold>=c) { state.p.gold-=c; state.items[t]++; updateUI(); } }
@@ -425,16 +370,16 @@ function showView(v) {
     state.currentArea = (v==='battle')?state.currentArea:-1;
     document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
     document.querySelectorAll('.tab-btn-main').forEach(b=>b.classList.remove('active'));
-    document.getElementById(v+'-view').classList.add('active');
+    const targetView = document.getElementById(v+'-view');
+    if(targetView) targetView.classList.add('active');
+    
     if(v==='home') { renderHomeLists(); renderAutoSettings(); }
     if(v==='warehouse') renderWarehouse();
     if(v==='shop') renderShop();
-    updateUI();
 }
 
-// --- ゲームループ ---
 function loop() {
-    const now = Date.now(); const dt = now - state.lastTick; state.lastTick = now;
+    const now = Date.now(), dt = now - state.lastTick; state.lastTick = now;
     state.p.gold += (getGPS() * dt / 1000); 
     if(now - state.lastSave > 5000) { saveGame(); state.lastSave = now; }
     updateUI();
@@ -445,52 +390,49 @@ function loop() {
         if(!state.enemies.length) state.enemies.push({hp:area.hp, maxHp:area.hp, atk:area.atk, def:area.def, x:450, y:200, lastAtk:0, lv:area.lv, emoji:area.emoji});
         const target = state.enemies[0];
         
-        ['elixir', 'hi_potion', 'potion', 'herb'].forEach(k => {
-            if(state.autoUse[k]?.enabled && state.items[k] > 0 && state.p.hp <= state.p.maxHp * (state.autoUse[k].pct/100)) useItem(k);
-        });
+        ['elixir', 'hi_potion', 'potion', 'herb'].forEach(k => { if(state.autoUse[k]?.enabled && state.items[k] > 0 && state.p.hp <= state.p.maxHp * (state.autoUse[k].pct/100)) useItem(k); });
 
         state.p.x += (state.p.targetX - state.p.x) * 0.2;
+
+        ctx.font = "20px sans-serif";
+        let petYOffset = 0;
+        pets.forEach(pet => {
+            if(state.petLevels[pet.id] > 0) {
+                ctx.fillStyle = pet.color;
+                ctx.fillText(pet.emoji, 20, 80 + petYOffset);
+                petYOffset += 32;
+            }
+        });
+
         ctx.fillStyle = "#00ffcc"; ctx.font = "24px sans-serif";
         ctx.fillText("( ・д・)", state.p.x - 30, state.p.y + 10);
         ctx.fillStyle = "#ff4444"; ctx.fillText(target.emoji, target.x - 30, target.y + 10);
         
-        document.getElementById('btl-p-hp').innerText = Math.floor(state.p.hp) + "/" + state.p.maxHp;
-        document.getElementById('btl-e-hp').innerText = Math.floor(target.hp) + "/" + target.maxHp;
-        document.getElementById('btl-p-lv').innerText = state.p.lv;
-        document.getElementById('btl-p-exp').innerText = Math.floor(state.p.exp);
-        document.getElementById('btl-p-next').innerText = state.p.lv * 100;
-        document.getElementById('btl-p-atk').innerText = getAtk();
-        document.getElementById('btl-p-def').innerText = getDef();
-        document.getElementById('btl-e-lv').innerText = target.lv;
-        document.getElementById('btl-e-atk').innerText = target.atk;
-        document.getElementById('btl-e-def').innerText = target.def;
+        document.getElementById('btl-p-hp').innerText = Math.floor(state.p.hp).toLocaleString() + "/" + state.p.maxHp.toLocaleString();
+        document.getElementById('btl-e-hp').innerText = Math.floor(target.hp).toLocaleString() + "/" + target.maxHp.toLocaleString();
 
         if(now - state.p.lastAtk > 1000/state.p.spd) {
             state.p.targetX = 350; setTimeout(()=>state.p.targetX=150, 100);
             const dmg = Math.max(1, getAtk() - target.def);
             target.hp -= dmg; state.p.lastAtk = now;
-            state.popups.push({x:target.x, y:target.y, text:dmg, life:20, color:"#fff"});
+            state.popups.push({x:target.x, y:target.y, text:dmg.toLocaleString(), life:20, color:"#fff"});
         }
         if(now - target.lastAtk > 1500) {
             const dmg = Math.max(1, target.atk - getDef());
             state.p.hp -= dmg; target.lastAtk = now;
-            state.popups.push({x:state.p.x, y:state.p.y, text:dmg, life:20, color:"red"});
+            state.popups.push({x:state.p.x, y:state.p.y, text:dmg.toLocaleString(), life:20, color:"red"});
         }
         
-        state.popups = state.popups.filter(p => {
-            ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, p.y); p.y -= 2; p.life--; return p.life > 0;
-        });
+        state.popups = state.popups.filter(p => { ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, p.y); p.y -= 2; p.life--; return p.life > 0; });
 
         if(target.hp <= 0) {
-            const g = area.lv * 50; const e = area.lv * 20;
-            state.p.gold += g; state.p.exp += e;
-            addLog(`勝利: ${g}G / ${e}EXP`);
-            if(state.p.exp >= state.p.lv * 100) { state.p.exp = 0; state.p.lv++; state.p.maxHp += 50; state.p.hp = state.p.maxHp; addLog("レベルアップ！"); }
-            if(Math.random()<0.1) {
+            state.p.gold += area.lv * 50; state.p.exp += area.lv * 20;
+            if(state.p.exp >= state.p.lv * 100) { state.p.exp = 0; state.p.lv++; state.p.maxHp += 50; state.p.hp = state.p.maxHp; addLog("LvUp!"); }
+            if(Math.random()<0.2) {
                 const rPart = parts[Math.floor(Math.random()*parts.length)];
-                const item = JSON.parse(JSON.stringify(shopData[rPart][Math.min(shopData[rPart].length-1, Math.floor(area.lv/5))]));
-                state.inventory[rPart].push(item);
-                addLog(`ドロップ: ${item.name}`);
+                const itemIdx = Math.min(29, Math.floor(area.lv/3.5) + Math.floor(Math.random()*3));
+                const item = JSON.parse(JSON.stringify(shopData[rPart][itemIdx]));
+                state.inventory[rPart].push(item); addLog("Drop: "+item.name);
             }
             state.enemies.shift();
         }
@@ -499,12 +441,14 @@ function loop() {
     requestAnimationFrame(loop);
 }
 
-// --- 初期化 ---
-document.getElementById('map-grid').innerHTML = areas.map((a,i)=>`<div class="map-card" onclick="state.currentArea=${i};showView('battle')"><strong>${a.name}</strong><br>Lv.${a.lv}</div>`).join('');
-document.getElementById('warehouse-tabs-container').innerHTML = ['item', ...parts].map(p=>`<button class="tab-btn-sub" onclick="state.currentWarehouseTab='${p}';renderWarehouse()">${p}</button>`).join('');
-document.getElementById('shop-tabs-container').innerHTML = ['item', ...parts].map(p=>`<button class="tab-btn-sub" onclick="state.currentShopTab='${p}';renderShop()">${p}</button>`).join('');
-
-loadGame(); loop();
+// 初期化処理の実行順序
+window.onload = () => {
+    document.getElementById('map-grid').innerHTML = areas.map((a,i)=>`<div class="map-card" onclick="state.currentArea=${i};showView('battle')"><strong>${a.name}</strong><br>Lv.${a.lv}</div>`).join('');
+    document.getElementById('warehouse-tabs-container').innerHTML = ['item', ...parts].map(p=>`<button class="tab-btn-sub" onclick="state.currentWarehouseTab='${p}';renderWarehouse()">${p}</button>`).join('');
+    document.getElementById('shop-tabs-container').innerHTML = ['item', ...parts].map(p=>`<button class="tab-btn-sub" onclick="state.currentShopTab='${p}';renderShop()">${p}</button>`).join('');
+    loadGame(); 
+    loop();
+};
 </script>
 </body>
 </html>
