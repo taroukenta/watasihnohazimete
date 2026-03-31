@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RPG - Auto Use Fixed</title>
+    <title>RPG - Battle Stats Fixed</title>
     <style>
         :root { --main-color: #00ffcc; --bg-dark: #121212; --panel-bg: #1e1e1e; }
         body { background: var(--bg-dark); color: #eee; font-family: sans-serif; margin: 0; padding: 0; touch-action: manipulation; overflow: hidden; width: 100vw; height: 100vh; }
@@ -77,8 +77,7 @@
             </div>
 
             <div class="section-title">⚙️ 自動アイテム使用詳細設定</div>
-            <div class="stat-box" id="auto-settings-list">
-                </div>
+            <div class="stat-box" id="auto-settings-list"></div>
             
             <div class="section-title">🛡️ 装備中の武具</div>
             <div class="stat-box" id="current-equip-list" style="font-size: 10px;"></div>
@@ -226,32 +225,19 @@ let state = {
     currentArea: -1, enemies: [], popups: [], lastTick: Date.now(), lastSave: Date.now()
 };
 
-// AutoUseの初期化
-Object.keys(usableItems).forEach(k => { 
-    state.autoUse[k] = { enabled: false, pct: usableItems[k].defaultPct }; 
-});
+Object.keys(usableItems).forEach(k => { state.autoUse[k] = { enabled: false, pct: usableItems[k].defaultPct }; });
 
-function saveGame() { localStorage.setItem('rpg_fixed_v3', JSON.stringify(state)); }
+function saveGame() { localStorage.setItem('rpg_fixed_v4', JSON.stringify(state)); }
 function loadGame() {
-    const saved = localStorage.getItem('rpg_fixed_v3');
-    if (saved) { 
-        const parsed = JSON.parse(saved);
-        state = {...state, ...parsed};
-        // 保存データにautoUseがない場合の補填
-        Object.keys(usableItems).forEach(k => {
-            if(!state.autoUse[k]) state.autoUse[k] = { enabled: false, pct: usableItems[k].defaultPct };
-        });
-    }
-    updateUI();
-    renderAutoSettings();
-    renderHomeLists();
+    const saved = localStorage.getItem('rpg_fixed_v4');
+    if (saved) { state = {...state, ...JSON.parse(saved)}; }
+    updateUI(); renderAutoSettings(); renderHomeLists();
 }
-function resetGame() { if(confirm("データを消去しますか？")) { localStorage.removeItem('rpg_fixed_v3'); location.reload(); } }
+function resetGame() { if(confirm("データを消去しますか？")) { localStorage.removeItem('rpg_fixed_v4'); location.reload(); } }
 
 function addLog(msg) {
     const container = document.getElementById('log-container');
-    const entry = document.createElement('div');
-    entry.innerText = `> ${msg}`;
+    const entry = document.createElement('div'); entry.innerText = `> ${msg}`;
     container.prepend(entry);
     if(container.childNodes.length > 20) container.removeChild(container.lastChild);
 }
@@ -320,17 +306,9 @@ function buyPet(id) {
 }
 
 function renderAutoSettings() {
-    const target = document.getElementById('auto-settings-list');
-    if(!target) return;
+    const target = document.getElementById('auto-settings-list'); if(!target) return;
     target.innerHTML = Object.entries(usableItems).map(([k, item]) => `
-        <div class="stat-row">
-            <div>${item.emoji} ${item.name}</div>
-            <div class="slider-box">
-                <span id="pct-val-${k}">${state.autoUse[k].pct}%</span>
-                <input type="range" min="1" max="95" value="${state.autoUse[k].pct}" oninput="updateAutoPct('${k}', this.value)">
-            </div>
-            <button class="toggle-btn ${state.autoUse[k].enabled?'active':''}" onclick="toggleAutoCustom('${k}')">${state.autoUse[k].enabled?'ON':'OFF'}</button>
-        </div>
+        <div class="stat-row"><div>${item.emoji} ${item.name}</div><div class="slider-box"><span id="pct-val-${k}">${state.autoUse[k].pct}%</span><input type="range" min="1" max="95" value="${state.autoUse[k].pct}" oninput="updateAutoPct('${k}', this.value)"></div><button class="toggle-btn ${state.autoUse[k].enabled?'active':''}" onclick="toggleAutoCustom('${k}')">${state.autoUse[k].enabled?'ON':'OFF'}</button></div>
     `).join('');
 }
 function updateAutoPct(k, val) { state.autoUse[k].pct = parseInt(val); document.getElementById(`pct-val-${k}`).innerText = val+"%"; }
@@ -370,9 +348,7 @@ function showView(v) {
     state.currentArea = (v==='battle')?state.currentArea:-1;
     document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
     document.querySelectorAll('.tab-btn-main').forEach(b=>b.classList.remove('active'));
-    const targetView = document.getElementById(v+'-view');
-    if(targetView) targetView.classList.add('active');
-    
+    const targetView = document.getElementById(v+'-view'); if(targetView) targetView.classList.add('active');
     if(v==='home') { renderHomeLists(); renderAutoSettings(); }
     if(v==='warehouse') renderWarehouse();
     if(v==='shop') renderShop();
@@ -408,8 +384,18 @@ function loop() {
         ctx.fillText("( ・д・)", state.p.x - 30, state.p.y + 10);
         ctx.fillStyle = "#ff4444"; ctx.fillText(target.emoji, target.x - 30, target.y + 10);
         
+        // --- 戦闘画面ステータスのリアルタイム更新 ---
+        document.getElementById('btl-p-lv').innerText = state.p.lv;
         document.getElementById('btl-p-hp').innerText = Math.floor(state.p.hp).toLocaleString() + "/" + state.p.maxHp.toLocaleString();
+        document.getElementById('btl-p-exp').innerText = Math.floor(state.p.exp).toLocaleString();
+        document.getElementById('btl-p-next').innerText = (state.p.lv * 100).toLocaleString();
+        document.getElementById('btl-p-atk').innerText = getAtk().toLocaleString();
+        document.getElementById('btl-p-def').innerText = getDef().toLocaleString();
+        
         document.getElementById('btl-e-hp').innerText = Math.floor(target.hp).toLocaleString() + "/" + target.maxHp.toLocaleString();
+        document.getElementById('btl-e-lv').innerText = target.lv;
+        document.getElementById('btl-e-atk').innerText = target.atk.toLocaleString();
+        document.getElementById('btl-e-def').innerText = target.def.toLocaleString();
 
         if(now - state.p.lastAtk > 1000/state.p.spd) {
             state.p.targetX = 350; setTimeout(()=>state.p.targetX=150, 100);
@@ -427,7 +413,15 @@ function loop() {
 
         if(target.hp <= 0) {
             state.p.gold += area.lv * 50; state.p.exp += area.lv * 20;
-            if(state.p.exp >= state.p.lv * 100) { state.p.exp = 0; state.p.lv++; state.p.maxHp += 50; state.p.hp = state.p.maxHp; addLog("LvUp!"); }
+            // レベルアップ処理
+            const nextExp = state.p.lv * 100;
+            if(state.p.exp >= nextExp) {
+                state.p.exp -= nextExp; 
+                state.p.lv++; 
+                state.p.maxHp += 50; 
+                state.p.hp = state.p.maxHp; 
+                addLog(`LvUp! 現在: Lv.${state.p.lv}`); 
+            }
             if(Math.random()<0.2) {
                 const rPart = parts[Math.floor(Math.random()*parts.length)];
                 const itemIdx = Math.min(29, Math.floor(area.lv/3.5) + Math.floor(Math.random()*3));
@@ -441,13 +435,11 @@ function loop() {
     requestAnimationFrame(loop);
 }
 
-// 初期化処理の実行順序
 window.onload = () => {
     document.getElementById('map-grid').innerHTML = areas.map((a,i)=>`<div class="map-card" onclick="state.currentArea=${i};showView('battle')"><strong>${a.name}</strong><br>Lv.${a.lv}</div>`).join('');
     document.getElementById('warehouse-tabs-container').innerHTML = ['item', ...parts].map(p=>`<button class="tab-btn-sub" onclick="state.currentWarehouseTab='${p}';renderWarehouse()">${p}</button>`).join('');
     document.getElementById('shop-tabs-container').innerHTML = ['item', ...parts].map(p=>`<button class="tab-btn-sub" onclick="state.currentShopTab='${p}';renderShop()">${p}</button>`).join('');
-    loadGame(); 
-    loop();
+    loadGame(); loop();
 };
 </script>
 </body>
