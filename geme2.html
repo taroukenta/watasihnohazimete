@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RPG - Detailed Stats UI</title>
+    <style>
+        :root { --main-color: #00ffcc; --bg-dark: #121212; --panel-bg: #1e1e1e; }
+        body { background: var(--bg-dark); color: #eee; font-family: sans-serif; margin: 0; padding: 0; touch-action: manipulation; overflow: hidden; width: 100vw; height: 100vh; }
+        #game-wrapper { width: 100%; height: 100%; display: flex; flex-direction: column; }
+        #global-header { background: #111; padding: 10px 15px; display: flex; justify-content: space-between; border-bottom: 1px solid #333; font-size: 13px; font-weight: bold; }
+        #main-content { flex: 1; overflow-y: auto; padding: 10px; -webkit-overflow-scrolling: touch; padding-bottom: 80px; }
+        .view { display: none; }
+        .view.active { display: block; }
+        .section-title { font-size: 12px; color: var(--main-color); margin: 10px 0 5px 0; border-left: 3px solid var(--main-color); padding-left: 8px; text-transform: uppercase; }
+        .stat-box { background: #2a2a2a; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #333; }
+        .stat-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 11px; }
+        .item-info-bar { background: #000; padding: 5px 15px; font-size: 11px; color: #aaa; display: flex; gap: 10px; flex-wrap: wrap; }
+        button { cursor: pointer; border-radius: 4px; font-size: 11px; padding: 6px 10px; background: #333; color: #fff; border: 1px solid #555; }
+        .toggle-btn { background: #444; min-width: 50px; }
+        .toggle-btn.active { background: #27ae60; border-color: #2ecc71; }
+        .buy-btn { width: 100%; text-align: left; margin-bottom: 5px; display: flex; flex-direction: column; padding: 8px; }
+        .buy-btn .price { align-self: flex-end; color: #f1c40f; font-weight: bold; }
+        .tabs { display: flex; overflow-x: auto; gap: 5px; margin-bottom: 10px; background: #111; padding: 5px; }
+        .tab-btn-sub { padding: 6px 12px; background: #222; color: #888; border: 1px solid #444; white-space: nowrap; flex-shrink: 0; }
+        .tab-btn-sub.active { background: var(--main-color); color: #000; border-color: var(--main-color); }
+        #tab-menu { position: fixed; bottom: 0; width: 100%; display: flex; background: #111; border-top: 2px solid #333; height: 65px; }
+        .tab-btn-main { flex: 1; border: none; background: transparent; color: #888; font-size: 11px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .tab-btn-main.active { color: var(--main-color); background: #222; border-top: 3px solid var(--main-color); }
+        .map-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .map-card { background: #333; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #444; font-size: 12px; }
+        #log-container { height: 60px; overflow-y: auto; background: #000; padding: 5px; border-radius: 4px; font-size: 10px; border: 1px solid #333; margin-top: 5px; }
+        .battle-ui-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 5px; }
+        .mini-stat-card { background: #1a1a1a; padding: 5px; border-radius: 4px; border: 1px solid #444; font-size: 10px; }
+        .plus-val { color: #f1c40f; font-weight: bold; }
+        .item-desc { font-size: 9px; color: #aaa; margin-top: 2px; }
+        .slider-box { display: flex; align-items: center; gap: 5px; min-width: 120px; }
+        input[type=range] { flex: 1; height: 4px; }
+    </style>
+</head>
+<body>
+
+<div id="game-wrapper">
+    <div id="global-header">
+        <div>GOLD: <span id="gold-global">0</span></div>
+        <div>GPS: <span id="gps-val">0</span></div>
+    </div>
+    
+    <div class="item-info-bar" id="item-header-bar"></div>
+
+    <div id="main-content">
+        <div id="home-view" class="view active">
+            <div class="section-title">📊 プレイヤー詳細ステータス</div>
+            <div class="stat-box">
+                <div class="stat-row"><span>Lv / EXP</span> <span><span id="p-lv">1</span> (<span id="p-exp">0</span> / <span id="p-next-exp">100</span>)</span></div>
+                <div class="stat-row"><span>HP (現在/最大)</span> <span><span id="p-hp-cur">0</span> / <span id="p-mhp">0</span></span></div>
+                <div class="stat-row"><span>攻撃力 (ATK)</span> <span><span id="p-atk-base">0</span> <span class="plus-val">+ (<span id="p-atk-plus">0</span>)</span> = <span id="total-atk-val">0</span></span></div>
+                <div class="stat-row"><span>防御力 (DEF)</span> <span><span id="p-def-base">0</span> <span class="plus-val">+ (<span id="p-def-plus">0</span>)</span> = <span id="total-def-val">0</span></span></div>
+                <div class="stat-row"><span>攻撃速度 (SPD)</span> <span><span id="p-spd">1.1</span></span></div>
+            </div>
+
+            <div class="section-title">⚙️ 自動アイテム使用詳細設定</div>
+            <div class="stat-box" id="auto-settings-list"></div>
+            
+            <div class="section-title">🛡️ 装備中の武具</div>
+            <div class="stat-box" id="current-equip-list" style="font-size: 10px;"></div>
+
+            <div class="section-title">📈 プレイヤー強化</div>
+            <div class="stat-box">
+                <div class="stat-row"><span>攻撃力 (ATK) +5</span> <button onclick="upgrade('atk')"><span id="atk-cost">10</span>G</button></div>
+                <div class="stat-row"><span>防御力 (DEF) +2</span> <button onclick="upgrade('def')"><span id="def-cost">15</span>G</button></div>
+                <div class="stat-row"><span>攻撃速度 (SPD) +0.1</span> <button onclick="upgrade('spd')"><span id="spd-cost">25</span>G</button></div>
+                <div class="stat-row"><span>最大HP +50</span> <button onclick="upgrade('hp')"><span id="hp-cost">15</span>G</button></div>
+            </div>
+
+            <div class="section-title">🐾 ペット強化</div>
+            <div id="pet-list" class="stat-box"></div>
+
+            <div class="section-title">🏢 放置施設</div>
+            <div id="facility-list" class="stat-box"></div>
+
+            <div class="section-title">💾 システム</div>
+            <div class="stat-box">
+                <div class="stat-row"><span>データ管理</span> 
+                    <div>
+                        <button onclick="saveGame()">手動セーブ</button>
+                        <button style="background:#622;" onclick="resetGame()">データ消去</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="warehouse-view" class="view">
+            <div class="tabs" id="warehouse-tabs-container"></div>
+            <div id="warehouse-content" class="stat-box"></div>
+        </div>
+
+        <div id="shop-view" class="view">
+            <div class="tabs" id="shop-tabs-container"></div>
+            <div id="shop-content-list"></div>
+        </div>
+
+        <div id="adventure-view" class="view">
+            <div class="section-title">エリア選択</div>
+            <div class="map-grid" id="map-grid"></div>
+        </div>
+
+        <div id="battle-view" class="view">
+            <canvas id="gameCanvas" style="width:100%; height:180px;"></canvas>
+            <div class="battle-ui-stats">
+                <div class="mini-stat-card">
+                    <strong>PLAYER (Lv.<span id="btl-p-lv">1</span>)</strong><br>
+                    HP: <span id="btl-p-hp">0</span><br>
+                    EXP: (<span id="btl-p-exp">0</span>/<span id="btl-p-next">100</span>)<br>
+                    ATK: <span id="btl-p-atk">0</span> / DEF: <span id="btl-p-def">0</span>
+                </div>
+                <div class="mini-stat-card">
+                    <strong>ENEMY (Lv.<span id="btl-e-lv">1</span>)</strong><br>
+                    HP: <span id="btl-e-hp">0</span><br><br>
+                    ATK: <span id="btl-e-atk">0</span> / DEF: <span id="btl-e-def">0</span>
+                </div>
+            </div>
+            <div id="log-container"></div>
+            <div style="text-align:right; margin-top:5px;"><button onclick="showView('adventure')">撤退</button></div>
+        </div>
+    </div>
+
+    <div id="tab-menu">
+        <button class="tab-btn-main active" onclick="showView('home')">🏠ホーム</button>
+        <button class="tab-btn-main" onclick="showView('warehouse')">📦倉庫</button>
+        <button class="tab-btn-main" onclick="showView('shop')">💰ショップ</button>
+        <button class="tab-btn-main" onclick="showView('adventure')">⚔️冒険</button>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = 600; canvas.height = 300;
+
+const areas = [
+    { name: "草原", hp: 30, atk: 5, def: 2, color:"#1a2a1a", lv:1, emoji:"🍃( ・ө・)" }, 
+    { name: "深い森", hp: 350, atk: 25, def: 10, color:"#0d1a0d", lv:10, emoji:"🌲( ⚔️ )" },
+    { name: "湿地", hp: 1600, atk: 70, def: 30, color:"#1a1d1a", lv:25, emoji:"🍄( 🌀 )" }, 
+    { name: "灼熱洞", hp: 7500, atk: 180, def: 80, color:"#2a1212", lv:40, emoji:"🔥( 👹 )" },
+    { name: "霊峰", hp: 25000, atk: 400, def: 200, color:"#1a1a2a", lv:55, emoji:"❄️( 👻 )" }, 
+    { name: "廃都", hp: 85000, atk: 700, def: 350, color:"#1a1a1a", lv:70, emoji:"🧱( 💀 )" },
+    { name: "奈落", hp: 320000, atk: 1100, def: 550, color:"#0d0d0d", lv:85, emoji:"🧿( 👁️ )" }, 
+    { name: "虚無", hp: 2500000, atk: 2100, def: 1100, color:"#000", lv:99, emoji:"🌌( 🌌 )" }
+];
+
+const facilities = [
+    {id:'shop', name:'露店経営', inc:10, baseCost:500},
+    {id:'farm', name:'薬草農園', inc:80, baseCost:4000},
+    {id:'mine', name:'魔石鉱山', inc:500, baseCost:25000},
+    {id:'castle', name:'領主の城', inc:2500, baseCost:120000}
+];
+
+const pets = [
+    {id:'slime', name:'スライム', atk:15, def:5, baseCost:300, color:'#00ff88', emoji:"( ・ω・)"},
+    {id:'turtle', name:'リクガメ', atk:2, def:25, baseCost:600, color:'#88cc00', emoji:"( 🐢 )"},
+    {id:'fairy', name:'フェアリー', atk:60, def:20, baseCost:3000, color:'#ff88ff', emoji:"( ・∀・)v"},
+    {id:'golem', name:'ゴーレム', atk:20, def:180, baseCost:12000, color:'#aaaaaa', emoji:"( [  ] )"},
+    {id:'dragon', name:'竜の仔', atk:250, def:80, baseCost:20000, color:'#ff4400', emoji:"( =^･ω)"},
+    {id:'guardian', name:'守護聖獣', atk:80, def:1200, baseCost:150000, color:'#ffd700', emoji:"( 🛡️✨ )"},
+    {id:'spirit', name:'古の精霊', atk:1000, def:300, baseCost:100000, color:'#ffffff', emoji:"( ✧Д✧)"}
+];
+
+const usableItems = {
+    herb: { name: "薬草", cost: 100, desc: "HPを50回復", heal: (p)=> 50, emoji: "🌿", defaultPct: 50 },
+    meat: { name: "謎の肉", cost: 300, desc: "HPを10% + 100回復", heal: (p)=> Math.floor(p.maxHp * 0.1) + 100, emoji: "🍗", defaultPct: 40 },
+    potion: { name: "ﾎﾟｰｼｮﾝ", cost: 800, desc: "最大HPの30%回復", heal: (p)=> Math.floor(p.maxHp * 0.3), emoji: "🧪", defaultPct: 30 },
+    hi_potion: { name: "ﾊｲﾎﾟｰｼｮﾝ", cost: 2500, desc: "最大HPの60%回復", heal: (p)=> Math.floor(p.maxHp * 0.6), emoji: "💊", defaultPct: 20 },
+    elixir: { name: "ｴﾘｸｻｰ", cost: 15000, desc: "HPを全回復", heal: (p)=> p.maxHp, emoji: "✨", defaultPct: 10 }
+};
+
+const parts = ['weapon','head','body','hand','foot','acc'];
+const shopData = {};
+const equipNames = {
+    weapon: ["木の棒", "鉄の短剣", "鋼鉄の剣", "銀のレイピア", "村正", "雷光の斧", "デュランダル", "グラム", "エクスカリバー", "神殺し", "龍の牙", "死神の鎌", "星屑の杖", "影縫いの短刀", "岩断ちの大剣", "獄炎の剣", "絶氷の槍", "閃光の弓", "深淵の剣", "ミョルニル", "天叢雲剣", "グングニル", "ゲイボルグ", "レーヴァテイン", "ロンゴミニアド", "方天画戟", "草薙の剣", "ラグナロク", "オメガブレイド", "終焉の裁き"],
+    head: ["布の帽子", "革のフード", "鉄の兜", "鋼鉄ヘルム", "騎士の面", "ミスリルヘルム", "龍の角飾り", "聖者の冠", "冥府の兜", "真理の額当て", "鉄仮面", "魔術師の帽子", "忍の覆面", "黄金の兜", "黒曜石の兜", "知恵の冠", "狂戦士の兜", "精霊のサークレット", "勇者の兜", "神官の帽子", "タイタンヘルム", "暗殺者のフード", "不死鳥の羽飾り", "幻影の仮面", "竜騎士の兜", "天界の冠", "虚空の額当て", "星辰の兜", "超越者の冠", "創世の兜"],
+    body: ["布の服", "冒険者の服", "革の鎧", "鎖帷子", "鉄の胸当て", "白銀の鎧", "紅蓮の甲冑", "聖騎士の鎧", "ドラゴンメイル", "神霊の衣", "戦士の具足", "隠密の装束", "魔法使いのローブ", "重厚なプレート", "ミスリルチェイン", "黄金の鎧", "ダークアーマー", "精霊のローブ", "チタンプレート", "聖者の法衣", "守護者の鎧", "忍者の黒衣", "竜鱗の鎧", "光の鎧", "冥王の装束", "天上のマント", "混沌の鎧", "流星のローブ", "虚無の法衣", "万物の鎧"],
+    hand: ["布の手袋", "革の小手", "鉄の篭手", "鋼鉄ガントレット", "守護の腕輪", "暗殺者の手甲", "精霊の腕輪", "聖なる手袋", "虚空の篭手", "真理の腕輪", "武闘家の包帯", "魔力のミトン", "力のグローブ", "ミスリルガード", "黄金の篭手", "大地の腕輪", "疾風の手甲", "竜の爪", "タイタンズ", "執事の手袋", "神速のグローブ", "不壊の篭手", "星の腕輪", "冥界の手甲", "天光の手袋", "深淵の腕輪", "覇王の篭手", "因果の手甲", "絶対の腕輪", "究極の篭手"],
+    foot: ["布の靴", "革のブーツ", "鉄の靴", "俊足のブーツ", "騎士の具足", "風神の靴", "竜脚のブーツ", "聖なる足袋", "冥王の靴", "天界の歩法", "草履", "木靴", "鉄の下駄", "ミスリルブーツ", "黄金の靴", "隠密の足袋", "疾風のサンダル", "重歩兵の具足", "ウィングブーツ", "魔導士の靴", "タイタンブーツ", "忍びの靴", "光の歩み", "虚空の靴", "星屑のブーツ", "深淵の具足", "覇王の靴", "真理の歩法", "超越者の靴", "無窮の歩み"],
+    acc: ["銅の指輪", "魔力のお守り", "力の首飾り", "生命の宝玉", "賢者の石", "天使の羽根", "悪魔の魂", "世界樹の種", "混沌の核", "全知の瞳", "友情の証", "守りのブローチ", "幸運のコイン", "ルビーの指輪", "サファイアの首飾り", "エメラルドの耳飾り", "竜の鱗", "鳳凰の尾", "ユニコーンの角", "英雄の証", "タイタンの指輪", "アミュレット", "約束の指輪", "悠久の時計", "神の涙", "星の砂", "運命の糸", "虚無の指輪", "創世の雫", "真実の鏡"]
+};
+parts.forEach(p => { shopData[p] = Array.from({length:30}, (_,i)=>({ id: p+"_"+i, name: equipNames[p][i], atk: p==='weapon'||p==='acc'?(i+1)*35:0, def: p!=='weapon'?(i+1)*22:0, cost: Math.pow(i+1, 4.3)*160 })); });
+
+let state = {
+    p: { gold:1000, lv:1, exp:0, hp:100, maxHp:100, atk:10, def:5, spd:1.1, x:150, y:200, targetX:150, lastAtk:0 },
+    costs: { atk:10, def:15, hp:15, spd:25 },
+    builds: { shop:0, farm:0, mine:0, castle:0 },
+    petLevels: { slime:0, turtle:0, fairy:0, golem:0, dragon:0, guardian:0, spirit:0 },
+    inventory: { weapon:[], head:[], body:[], hand:[], foot:[], acc:[] },
+    equips: { weapon:null, head:null, body:null, hand:null, foot:null, acc:null },
+    items: { herb: 5, meat: 0, potion: 2, hi_potion: 0, elixir: 0 },
+    autoUse: {}, currentShopTab: 'item', currentWarehouseTab: 'item',
+    currentArea: -1, enemies: [], popups: [], lastTick: Date.now(), lastSave: Date.now()
+};
+
+Object.keys(usableItems).forEach(k => { state.autoUse[k] = { enabled: false, pct: usableItems[k].defaultPct }; });
+
+function saveGame() { localStorage.setItem('rpg_save_data_custom', JSON.stringify(state)); }
+function loadGame() {
+    const saved = localStorage.getItem('rpg_save_data_custom');
+    if (saved) { 
+        state = {...state, ...JSON.parse(saved)};
+        Object.keys(usableItems).forEach(k => { 
+            if(state.items[k] === undefined) state.items[k] = 0; 
+            if(!state.autoUse[k]) state.autoUse[k] = { enabled: false, pct: usableItems[k].defaultPct };
+        });
+        pets.forEach(p => { if(state.petLevels[p.id] === undefined) state.petLevels[p.id] = 0; });
+        updateUI(); renderAutoSettings();
+    }
+}
+function resetGame() { if(confirm("初期化しますか？")) { localStorage.removeItem('rpg_save_data_custom'); location.reload(); } }
+
+function addLog(msg) {
+    const container = document.getElementById('log-container');
+    const entry = document.createElement('div');
+    entry.innerText = `> ${msg}`;
+    container.prepend(entry);
+    if(container.childNodes.length > 30) container.removeChild(container.lastChild);
+}
+
+function getPetBonusAtk() {
+    let petAtk = 0;
+    pets.forEach(p => petAtk += (state.petLevels[p.id] * p.atk));
+    return petAtk;
+}
+function getPetBonusDef() {
+    let petDef = 0;
+    pets.forEach(p => petDef += (state.petLevels[p.id] * p.def));
+    return petDef;
+}
+function getEquipBonusAtk() { return parts.reduce((s,k)=>s+(state.equips[k]?state.equips[k].atk:0), 0); }
+function getEquipBonusDef() { return parts.reduce((s,k)=>s+(state.equips[k]?state.equips[k].def:0), 0); }
+
+function getAtk() { return state.p.atk + getEquipBonusAtk() + getPetBonusAtk(); }
+function getDef() { return state.p.def + getEquipBonusDef() + getPetBonusDef(); }
+function getGPS() { return facilities.reduce((s,f)=>s+(state.builds[f.id]*f.inc), 0); }
+
+function toggleAutoCustom(k) { state.autoUse[k].enabled = !state.autoUse[k].enabled; renderAutoSettings(); }
+function updateAutoPct(k, val) { state.autoUse[k].pct = parseInt(val); document.getElementById(`pct-val-${k}`).innerText = val + "%"; }
+
+function renderAutoSettings() {
+    document.getElementById('auto-settings-list').innerHTML = Object.entries(usableItems).map(([k, item]) => {
+        const conf = state.autoUse[k];
+        return `
+            <div class="stat-row" style="border-bottom: 1px solid #333; padding-bottom:5px;">
+                <div style="flex:1;">${item.emoji} ${item.name}</div>
+                <div class="slider-box">
+                    <span id="pct-val-${k}" style="width:35px;">${conf.pct}%</span>
+                    <input type="range" min="1" max="95" value="${conf.pct}" oninput="updateAutoPct('${k}', this.value)">
+                </div>
+                <button class="toggle-btn ${conf.enabled?'active':''}" onclick="toggleAutoCustom('${k}')">${conf.enabled?'ON':'OFF'}</button>
+            </div>
+        `;
+    }).join('');
+}
+
+function updateUI() {
+    document.getElementById('gold-global').innerText = Math.floor(state.p.gold).toLocaleString();
+    document.getElementById('gps-val').innerText = getGPS().toLocaleString();
+    
+    document.getElementById('item-header-bar').innerHTML = Object.entries(usableItems).map(([k, v]) => `<span>${v.emoji}${state.items[k]}</span>`).join('') + 
+    `<span>⚔️${getAtk().toLocaleString()}</span><span>🛡️${getDef().toLocaleString()}</span><span>❤️${Math.floor(state.p.hp).toLocaleString()}/${state.p.maxHp.toLocaleString()}</span>`;
+    document.getElementById('p-lv').innerText = state.p.lv;
+    document.getElementById('p-exp').innerText = Math.floor(state.p.exp).toLocaleString();
+    document.getElementById('p-next-exp').innerText = (state.p.lv * 100).toLocaleString();
+    document.getElementById('p-hp-cur').innerText = Math.floor(state.p.hp).toLocaleString();
+    document.getElementById('p-mhp').innerText = state.p.maxHp.toLocaleString();
+    
+    // UI修正：主人公基礎 + (装備 + ペット) = 合計
+    const plusAtk = getEquipBonusAtk() + getPetBonusAtk();
+    const plusDef = getEquipBonusDef() + getPetBonusDef();
+    
+    document.getElementById('p-atk-base').innerText = state.p.atk.toLocaleString();
+    document.getElementById('p-atk-plus').innerText = plusAtk.toLocaleString();
+    document.getElementById('total-atk-val').innerText = getAtk().toLocaleString();
+    
+    document.getElementById('p-def-base').innerText = state.p.def.toLocaleString();
+    document.getElementById('p-def-plus').innerText = plusDef.toLocaleString();
+    document.getElementById('total-def-val').innerText = getDef().toLocaleString();
+    
+    document.getElementById('p-spd').innerText = state.p.spd.toFixed(1);
+    document.getElementById('atk-cost').innerText = state.costs.atk.toLocaleString();
+    document.getElementById('def-cost').innerText = state.costs.def.toLocaleString();
+    document.getElementById('spd-cost').innerText = state.costs.spd.toLocaleString();
+    document.getElementById('hp-cost').innerText = state.costs.hp.toLocaleString();
+    document.getElementById('current-equip-list').innerHTML = parts.map(p => {
+        const eq = state.equips[p];
+        return `<div>${p.toUpperCase()}: <span style="color:#f1c40f">${eq?eq.name:'-'}</span> ${eq ? `(<span class="plus-val">+${(eq.atk||eq.def).toLocaleString()}</span>)` : ''}</div>`;
+    }).join('');
+}
+
+function checkLevelUp() {
+    const nextExp = state.p.lv * 100;
+    if (state.p.exp >= nextExp) {
+        state.p.exp -= nextExp; state.p.lv++;
+        state.p.maxHp += 40; state.p.atk += 6; state.p.def += 3; state.p.hp = state.p.maxHp;
+        addLog(`★ レベルアップ！ Lv.${state.p.lv}`);
+        checkLevelUp(); 
+    }
+}
+
+function renderLists() {
+    document.getElementById('facility-list').innerHTML = facilities.map(f=>{
+        const cost = Math.floor(f.baseCost * Math.pow(1.6, state.builds[f.id]));
+        return `<div class="stat-row"><span>${f.name} Lv.${state.builds[f.id]} (+${(state.builds[f.id]*f.inc).toLocaleString()}G/s)</span><button onclick="buyFacility('${f.id}')">${cost.toLocaleString()}G</button></div>`;
+    }).join('');
+    document.getElementById('pet-list').innerHTML = pets.map(p=>{
+        const lv = state.petLevels[p.id];
+        const cost = Math.floor(p.baseCost * Math.pow(2.2, lv));
+        let bonusText = "";
+        if(p.atk > 0 && p.def > 0) bonusText = `ATK:+${(p.atk*lv).toLocaleString()} / DEF:+${(p.def*lv).toLocaleString()}`;
+        else if(p.atk > 0) bonusText = `ATK:+${(p.atk*lv).toLocaleString()}`;
+        else bonusText = `DEF:+${(p.def*lv).toLocaleString()}`;
+
+        return `<div class="stat-row"><span>${p.name} Lv.${lv} (${bonusText})</span><button onclick="buyPet('${p.id}')">${cost.toLocaleString()}G</button></div>`;
+    }).join('');
+}
+
+function upgrade(t) {
+    if(state.p.gold >= state.costs[t]) {
+        state.p.gold -= state.costs[t];
+        if(t==='atk') state.p.atk+=5; else if(t==='def') state.p.def+=2; 
+        else if(t==='spd') state.p.spd+=0.1; else if(t==='hp') { state.p.maxHp+=50; state.p.hp=state.p.maxHp; }
+        state.costs[t] = Math.floor(state.costs[t]*1.8); updateUI();
+    }
+}
+
+function buyFacility(id) {
+    const f = facilities.find(x=>x.id===id);
+    const cost = Math.floor(f.baseCost * Math.pow(1.6, state.builds[id]));
+    if(state.p.gold >= cost) { state.p.gold -= cost; state.builds[id]++; renderLists(); updateUI(); }
+}
+
+function buyPet(id) {
+    const p = pets.find(x=>x.id===id);
+    const cost = Math.floor(p.baseCost * Math.pow(2.2, state.petLevels[id]));
+    if(state.p.gold >= cost) { state.p.gold -= cost; state.petLevels[id]++; renderLists(); updateUI(); }
+}
+
+function showView(v) {
+    state.currentArea = (v==='battle')?state.currentArea:-1;
+    if(v==='battle') { state.enemies = []; state.popups = []; document.getElementById('log-container').innerHTML=""; }
+    document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn-main').forEach(b=>b.classList.remove('active'));
+    document.getElementById(v+'-view').classList.add('active');
+    const idx = {home:0, warehouse:1, shop:2, adventure:3}[v];
+    if(idx!==undefined) document.querySelectorAll('.tab-btn-main')[idx].classList.add('active');
+    if(v==='home') { renderLists(); renderAutoSettings(); }
+    if(v==='warehouse') renderWarehouse();
+    if(v==='shop') renderShop();
+    updateUI();
+}
+
+function changeWarehouseTab(t) { state.currentWarehouseTab = t; renderWarehouse(); }
+function renderWarehouse() {
+    const list = document.getElementById('warehouse-content');
+    if(state.currentWarehouseTab === 'item') {
+        list.innerHTML = Object.entries(usableItems).map(([key, item]) => `
+            <div class="stat-row">
+                <div>${item.emoji} ${item.name} (${state.items[key]})<br><span class="item-desc">${item.desc}</span></div>
+                <button onclick="useItem('${key}')">使用</button>
+            </div>
+        `).join('');
+        return;
+    }
+    const owned = state.inventory[state.currentWarehouseTab];
+    list.innerHTML = owned.length ? owned.map(item => `<div class="stat-row"><span>${item.name} (${(item.atk||item.def).toLocaleString()})</span> ${state.equips[state.currentWarehouseTab]?.id === item.id ? '[装備中]' : `<button onclick="equipItem('${state.currentWarehouseTab}','${item.id}')">装備</button>`}</div>`).join('') : "なし";
+}
+function equipItem(p, id) { state.equips[p] = state.inventory[p].find(i=>i.id===id); renderWarehouse(); updateUI(); }
+
+function useItem(t) { 
+    if(state.items[t] > 0) { 
+        state.items[t]--; 
+        const amount = usableItems[t].heal(state.p);
+        state.p.hp = Math.min(state.p.maxHp, state.p.hp + amount); 
+        renderWarehouse(); updateUI(); 
+    } 
+}
+
+function changeShopTab(t) { state.currentShopTab = t; renderShop(); }
+function renderShop() {
+    const list = document.getElementById('shop-content-list');
+    if(state.currentShopTab === 'item') {
+        list.innerHTML = Object.entries(usableItems).map(([key, item]) => `
+            <button class="buy-btn" onclick="buyItem('${key}', ${item.cost})">
+                <div style="display:flex; justify-content:space-between; width:100%;">
+                    <strong>${item.emoji} ${item.name}</strong>
+                    <span class="price">${item.cost.toLocaleString()}G</span>
+                </div>
+                <div class="item-desc">${item.desc}</div>
+            </button>
+        `).join('');
+    } else {
+        list.innerHTML = shopData[state.currentShopTab].map(item => `<button class="buy-btn" onclick="buyEquip('${state.currentShopTab}','${item.id}')"><span>${item.name} (+${(item.atk||item.def).toLocaleString()})</span> <span class="price">${Math.floor(item.cost).toLocaleString()}G</span></button>`).join('');
+    }
+}
+function buyEquip(p, id) { const item = shopData[p].find(i=>i.id===id); if(state.p.gold >= item.cost) { state.p.gold -= item.cost; state.inventory[p].push(item); updateUI(); } }
+function buyItem(t,c) { if(state.p.gold >= c) { state.p.gold-=c; state.items[t]++; updateUI(); } }
+
+function loop() {
+    const now = Date.now(); const dt = now - state.lastTick; state.lastTick = now;
+    state.p.gold += (getGPS() * dt / 1000); 
+    if(now - state.lastSave > 1000) { saveGame(); state.lastSave = now; }
+    updateUI();
+
+    if (state.currentArea >= 0) {
+        const area = areas[state.currentArea];
+        ctx.fillStyle = area.color; ctx.fillRect(0,0,600,300);
+        if(!state.enemies.length) state.enemies.push({hp:area.hp, maxHp:area.hp, atk:area.atk, def:area.def, x:450, y:200, lastAtk:0, lv:area.lv, emoji:area.emoji, damageProcessed: false});
+        const target = state.enemies[0];
+        
+        const keysInOrder = ['elixir', 'hi_potion', 'potion', 'meat', 'herb'];
+        for(let k of keysInOrder) {
+            const conf = state.autoUse[k];
+            if(conf && conf.enabled && state.items[k] > 0) {
+                if(state.p.hp <= state.p.maxHp * (conf.pct / 100)) {
+                    useItem(k);
+                    addLog(`自動使用: ${usableItems[k].name}`);
+                    state.popups.push({x:state.p.x, y:state.p.y-40, text:"AUTO HEAL!", life:30, color:"#2ecc71"});
+                    break;
+                }
+            }
+        }
+
+        state.p.x += (state.p.targetX - state.p.x) * 0.2;
+        
+        if(state.p.targetX === 350 && Math.abs(state.p.x - 350) < 10 && !target.damageProcessed) {
+            const dmg = Math.max(1, getAtk() - target.def);
+            target.hp -= dmg;
+            target.damageProcessed = true; 
+            addLog(`${dmg.toLocaleString()} dmg`);
+            state.popups.push({x:target.x, y:target.y, text:dmg.toLocaleString(), life:20, color:"#fff"});
+        }
+
+        ctx.fillStyle = "#00ffcc"; ctx.font = "bold 24px sans-serif";
+        ctx.fillText("( ・д・)", state.p.x - 30, state.p.y + 10);
+        
+        pets.forEach((p, idx) => {
+            if(state.petLevels[p.id] > 0) {
+                ctx.fillStyle = p.color; ctx.font = "14px sans-serif";
+                ctx.fillText(p.emoji, state.p.x - 60, state.p.y - 15 - (idx*20));
+            }
+        });
+
+        ctx.fillStyle = "#ff4444"; ctx.font = "bold 30px sans-serif";
+        ctx.fillText(target.emoji, target.x - 30, target.y + 10);
+        
+        document.getElementById('btl-p-lv').innerText = state.p.lv;
+        document.getElementById('btl-p-hp').innerText = `${Math.floor(state.p.hp).toLocaleString()}/${state.p.maxHp.toLocaleString()}`;
+        document.getElementById('btl-p-exp').innerText = Math.floor(state.p.exp).toLocaleString();
+        document.getElementById('btl-p-next').innerText = (state.p.lv * 100).toLocaleString();
+        document.getElementById('btl-p-atk').innerText = getAtk().toLocaleString();
+        document.getElementById('btl-p-def').innerText = getDef().toLocaleString();
+        document.getElementById('btl-e-lv').innerText = target.lv;
+        document.getElementById('btl-e-hp').innerText = `${Math.floor(target.hp).toLocaleString()}/${target.maxHp.toLocaleString()}`;
+        document.getElementById('btl-e-atk').innerText = target.atk.toLocaleString();
+        document.getElementById('btl-e-def').innerText = target.def.toLocaleString();
+
+        if(now - state.p.lastAtk > 1000/state.p.spd) {
+            state.p.targetX = 350;
+            target.damageProcessed = false; 
+            setTimeout(()=>state.p.targetX=150, 150);
+            state.p.lastAtk = now;
+        }
+
+        if(now - target.lastAtk > 1600) {
+            const dmg = Math.max(1, target.atk - getDef());
+            state.p.hp -= dmg; target.lastAtk = now;
+            addLog(`${dmg.toLocaleString()} 被弾`);
+            state.popups.push({x:state.p.x, y:state.p.y, text:dmg.toLocaleString(), life:20, color:"red"});
+        }
+
+        state.popups = state.popups.filter(p => {
+            ctx.fillStyle = p.color; ctx.font = "bold 16px sans-serif";
+            ctx.fillText(p.text, p.x, p.y); p.y -= 2; p.life--; return p.life > 0;
+        });
+        
+        if(target.hp <= 0) {
+            const g = area.lv * 40; 
+            const e = area.lv * 20; 
+            state.p.gold += g; 
+            state.p.exp += e;
+            addLog(`勝利: ${g.toLocaleString()}G / ${e.toLocaleString()}EXP`);
+            checkLevelUp();
+            if(Math.random()<0.15) {
+                const rType = parts[Math.floor(Math.random()*parts.length)];
+                const maxRnd = Math.min(29, Math.floor(area.lv / 3) + 2);
+                state.inventory[rType].push(shopData[rType][Math.floor(Math.random()*maxRnd)]);
+            }
+            state.enemies.shift();
+        }
+        if(state.p.hp <= 0) { alert("敗北"); state.p.hp=state.p.maxHp; showView('home'); }
+    }
+    requestAnimationFrame(loop);
+}
+
+document.getElementById('map-grid').innerHTML = areas.map((a,i)=>`<div class="map-card" onclick="state.p.hp=state.p.maxHp;state.currentArea=${i};showView('battle')"><strong>${a.name}</strong><br>Lv.${a.lv}</div>`).join('');
+document.getElementById('warehouse-tabs-container').innerHTML = ['item', ...parts].map(p=>`<button class="tab-btn-sub" onclick="changeWarehouseTab('${p}')">${p}</button>`).join('');
+document.getElementById('shop-tabs-container').innerHTML = ['item', ...parts].map(p=>`<button class="tab-btn-sub" onclick="changeShopTab('${p}')">${p}</button>`).join('');
+loadGame(); renderLists(); renderAutoSettings(); loop();
+</script>
+</body>
+</html>
