@@ -157,13 +157,36 @@ const ctx = canvas.getContext('2d');
 canvas.width = 600; canvas.height = 300;
 
 const areas = [
-    { name: "草原", hp: 30, atk: 5, def: 2, color:"#1a2a1a", lv:1, emoji:"🍃( ・Ψ・)" }, 
+    // 既存エリア
+    { name: "草原", hp: 30, atk: 5, def: 2, color:"#1a2a1a", lv:1, emoji:"🍃( ・ө・)" }, 
     { name: "深い森", hp: 350, atk: 25, def: 10, color:"#0d1a0d", lv:10, emoji:"🌲( ⚔️ )" },
     { name: "湿地", hp: 1600, atk: 70, def: 30, color:"#1a1d1a", lv:25, emoji:"🍄( 🌀 )" }, 
     { name: "灼熱洞", hp: 7500, atk: 180, def: 80, color:"#2a1212", lv:40, emoji:"🔥( 👹 )" },
     { name: "霊峰", hp: 25000, atk: 400, def: 200, color:"#1a1a2a", lv:55, emoji:"❄️( 👻 )" }, 
     { name: "廃都", hp: 85000, atk: 700, def: 350, color:"#1a1a1a", lv:70, emoji:"🧱( 💀 )" },
-    { name: "虚無", hp: 2500000, atk: 2100, def: 1100, color:"#000", lv:99, emoji:"🌌( 🌌 )" }
+    { name: "虚無", hp: 2500000, atk: 2100, def: 1100, color:"#000", lv:99, emoji:"🌌( 🌌 )" },
+
+    // 追加の20エリア (Lv.115 〜 Lv.500)
+    { name: "静寂の海", hp: 5000000, atk: 3500, def: 1800, color:"#001a33", lv:115, emoji:"🌊( 🐙 )" },
+    { name: "雷鳴の崖", hp: 9000000, atk: 5200, def: 2700, color:"#1a1a00", lv:135, emoji:"⚡( 🦅 )" },
+    { name: "水晶洞窟", hp: 16000000, atk: 7800, def: 4100, color:"#1a3333", lv:155, emoji:"💎( Golem )" },
+    { name: "古の神殿", hp: 28000000, atk: 11000, def: 6000, color:"#33261a", lv:175, emoji:"⛩️( 🗿 )" },
+    { name: "魔界の門", hp: 45000000, atk: 16000, def: 8800, color:"#1a001a", lv:195, emoji:"😈( 🚪 )" },
+    { name: "獄炎の谷", hp: 72000000, atk: 23000, def: 12500, color:"#330d00", lv:215, emoji:"🌋( 🐲 )" },
+    { name: "天空の城", hp: 115000000, atk: 33000, def: 18000, color:"#1a334d", lv:235, emoji:"🏰( 😇 )" },
+    { name: "星屑の道", hp: 180000000, atk: 48000, def: 26000, color:"#0d0d26", lv:255, emoji:"🌠( ✨ )" },
+    { name: "深淵の淵", hp: 280000000, atk: 68000, def: 37000, color:"#050505", lv:275, emoji:"🕳️( 👁️ )" },
+    { name: "時空の歪み", hp: 440000000, atk: 95000, def: 52000, color:"#260d26", lv:295, emoji:"🌀( ⌛ )" },
+    { name: "忘却の墓場", hp: 680000000, atk: 130000, def: 72000, color:"#1a1a1a", lv:315, emoji:"⚰️( 🧟 )" },
+    { name: "光輝の聖域", hp: 1000000000, atk: 180000, def: 100000, color:"#33331a", lv:335, emoji:"🌟( 👼 )" },
+    { name: "冥王の玉座", hp: 1600000000, atk: 260000, def: 145000, color:"#0d0000", lv:355, emoji:"👑( 💀 )" },
+    { name: "次元の狭間", hp: 2500000000, atk: 370000, def: 210000, color:"#1a1a33", lv:375, emoji:"🌌( 👾 )" },
+    { name: "無窮の回廊", hp: 4000000000, atk: 520000, def: 300000, color:"#0a0a0a", lv:400, emoji:"🔁( ⛓️ )" },
+    { name: "神殺しの地", hp: 6500000000, atk: 750000, def: 430000, color:"#2b2b2b", lv:425, emoji:"⚔️( 🔱 )" },
+    { name: "終焉の時計塔", hp: 10000000000, atk: 1100000, def: 620000, color:"#1a0d00", lv:450, emoji:"🔔( 🕒 )" },
+    { name: "理の果て", hp: 16000000000, atk: 1600000, def: 900000, color:"#00001a", lv:475, emoji:"📜( 🔯 )" },
+    { name: "創世の胎内", hp: 25000000000, atk: 2400000, def: 1350000, color:"#1a0000", lv:490, emoji:"🥚( 🧬 )" },
+    { name: "真・八百万神", hp: 40000000000, atk: 3500000, def: 2000000, color:"#ffffff", lv:500, emoji:"🌈( ⛩️ )" }
 ];
 
 const facilities = [
@@ -430,8 +453,22 @@ function loop() {
             }
             state.enemies.shift();
         }
-        if(state.p.hp <= 0) { state.p.hp=state.p.maxHp; addLog("敗北..."); showView('home'); }
-    }
+       if (state.p.hp <= 0) {
+    // 1. HPを最大まで回復
+    state.p.hp = state.p.maxHp;
+    
+    // 2. ログを表示
+    addLog("戦闘不能！一時撤退して回復しました。");
+    
+    // 3. 画面の数値を最新の状態に更新
+    updateUI();
+    
+    // 4. ホーム画面へ戻す
+    showView('home');
+    
+    // 5. セーブして状態を保持
+    saveGame();
+}
     requestAnimationFrame(loop);
 }
 
